@@ -5,7 +5,7 @@
 check_command ${GPG_BIN}
 
 gpg() {
-    function check_encryption_options {
+    check_encryption_options() {
         if [[ -z ${GPG_PASSPHRASE} ]]; then
             bail "In order to encrypt files, you must set the 'GPG_PASSPHRASE' configuration variable"
         fi
