@@ -12,6 +12,8 @@ source /app/s3sync.sh
 set_debug
 
 : ${SOURCE_REMOVE_PLAIN:=0}
+: ${SOURCE_FILE_PATTERN:=}
+: ${SOURCE_FILE_MODIFIED_MINUTES_AGO:=30}
 : ${SOURCE_PATH:=/data/plain}
 : ${ENCRYPTED_PATH:=/data/encrypted}
 
@@ -26,6 +28,9 @@ backup() {
     find_opts+=(-type f)
     [ -z "$SOURCE_FILE_PATTERN" ] || \
         find_opts+=(-name "$SOURCE_FILE_PATTERN")
+    if is_number "$SOURCE_FILE_MODIFIED_MINUTES_AGO" && [ $SOURCE_FILE_MODIFIED_MINUTES_AGO -gt 0 ]; then
+        find_opts+=(-mmin +$SOURCE_FILE_MODIFIED_MINUTES_AGO)
+    fi
 
     find "${find_opts[@]}" | while read file; do
         debug "Encrypting $file"

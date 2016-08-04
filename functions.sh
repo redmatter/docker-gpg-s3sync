@@ -71,4 +71,9 @@ fn_exists() {
     [[ $(type -t "$1") == function ]]
 }
 
+# check if the given value is not empty and is a number
+is_number() {
+    [ "$1" -eq "$1" ] &>/dev/null
+}
+
 check_command logger
