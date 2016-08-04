@@ -71,16 +71,4 @@ fn_exists() {
     [[ $(type -t "$1") == function ]]
 }
 
-fn_namespaced() {
-    local ns="$1"; shift
-    if fn_exists "$ns"; then
-        $fn "$@";
-    elif fn_exists "${ns}_${$1}"; then
-        local fn="${ns}_${$1}"; shift
-        $fn "$@"
-    else
-        bail "fn_namespaced: '$@' : Invalid invocation"
-    fi
-}
-
 check_command logger
