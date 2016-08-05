@@ -6,7 +6,7 @@
 : ${LOG_DEBUG:=0}
 
 if [ -n "$SYSLOG_TAG" ]; then
-    log_pipe=/tmp/_gpgcrypt.sh_$(date +%s)_${RANDOM}_log.tmp
+    log_pipe=/tmp/bash_log_pipe_$(date +%s)_${RANDOM}.tmp
     trap "rm -f $log_pipe" EXIT
     mknod $log_pipe p
     while read a_line_; do _log info "$a_line_"; done <$log_pipe &
@@ -17,11 +17,11 @@ fi
 
 _log() {
     local level=$1; shift;
-    if [ -n "$0" ]; then
+    if [ $# -gt 0 ]; then
         if [ -n "$SYSLOG_TAG" ]; then
             logger -t "${SYSLOG_TAG}" -p "${SYSLOG_FACILITY}.${level}" -- "$@";
         else
-            echo -- "$(date "+%Y-%m-%dT%H:%M:%S") [$level] $@"
+            echo -E "$(date "+%Y-%m-%dT%H:%M:%S") [$level] $@"
         fi
     fi
 }
