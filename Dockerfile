@@ -1,7 +1,6 @@
 FROM debian:jessie
 
-ENV TZ="Europe/London" \
-    SOURCE_PATH=/data/plain \
+ENV SOURCE_PATH=/data/plain \
     ENCRYPTED_PATH=/data/encrypted \
     GNUPGHOME=/app/.gnupg
 
