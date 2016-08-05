@@ -56,7 +56,7 @@ file_exists() {
 }
 
 file_not_exists() {
-    [ -n "$1" -a ! -e "$1" ]
+    [ -n "$1" -a ! -f "$1" ]
 }
 
 bail_file_exists() {
