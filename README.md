@@ -70,7 +70,7 @@ To restore a file from AWS S3, you need to run the below command.
 
 * `AWS_S3_BUCKET_PATH` (optional)
 
-  Path within AWS S3 bucket into which te files are to be put.
+  Path within AWS S3 bucket into which the files are to be put.
 
 * `SYSLOG_TAG` (optional)
 
