@@ -27,7 +27,7 @@ RUN ( \
     apt-get remove -y $BUILD_DEPS ; \
     apt-get autoremove -y ; \
     apt-get clean; \
-    rm -rf /var/lib/apt/ /var/lib/dpkg/ /var/lib/cache/ /var/lib/log/; \
+    rm -rf /var/lib/apt/* /var/lib/dpkg/* /var/lib/cache/* /var/lib/log/*; \
 )
 
 WORKDIR /app
