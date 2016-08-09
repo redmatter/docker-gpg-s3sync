@@ -87,3 +87,35 @@ To restore a file from AWS S3, you need to run the below command.
 * `LOG_DEBUG` (default `0`)
 
   Set to `1` if debug lines are to be logged (to console or syslog)
+
+## Config file
+
+The above environment variables can be defined in a file and be mounted in as shown in the below example. The path has
+to be `/app/settings.env` within the container.
+
+    # settings.env
+    SOURCE_FILE_PATTERN='*.zip'
+    SOURCE_REMOVE_PLAIN=1
+    GPG_PASSPHRASE=xxxx-PASSWORD-xxxx
+    AWS_ACCESS_KEY=__AWS_ACCESS_KEY__
+    AWS_SECRET_KEY=__AWS_SECRET_KEY__
+    AWS_S3_BUCKET=__AWS_S3_BUCKET__
+    AWS_S3_BUCKET_PATH=__AWS_S3_BUCKET_PATH__
+
+Docker commands can be as below.
+
+    docker run \
+        -v /path/to/settings.env:/app/settings.env \
+        -v /path/to/plain-files-dir:/data/plain \
+        -v /path/to/encrypted-files-dir:/data/encrypted \
+        redmatter/gpg-s3sync
+
+    docker run \
+        -v /path/to/settings.env:/app/settings.env \
+        -v /path/to/plain-files-dir:/data/plain \
+        -v /path/to/encrypted-files-dir:/data/encrypted \
+        redmatter/gpg-s3sync restore file-name.zip.gpg
+
+## License
+
+This code is licensed under MIT license. See [LICENSE](LICENSE) for more details.

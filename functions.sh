@@ -4,6 +4,7 @@
 : ${SYSLOG_FACILITY:=local0}
 : ${DEBUG:=0}
 : ${LOG_DEBUG:=0}
+: ${SETTINGS_FILE:=/app/settings.env}
 
 if [ -n "$SYSLOG_TAG" ]; then
     log_pipe=/tmp/bash_log_pipe_$(date +%s)_${RANDOM}.tmp
@@ -74,6 +75,14 @@ fn_exists() {
 # check if the given value is not empty and is a number
 is_number() {
     [ "$1" -eq "$1" ] &>/dev/null
+}
+
+load_settings_file() {
+    if [ -f "${SETTINGS_FILE}" ]; then
+        set -a
+        source "${SETTINGS_FILE}"
+        set +a
+    fi
 }
 
 check_command logger

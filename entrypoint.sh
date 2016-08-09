@@ -9,6 +9,7 @@ source /app/functions.sh
 source /app/gpgcrypt.sh
 source /app/s3sync.sh
 
+load_settings_file
 set_debug
 
 : ${SOURCE_REMOVE_PLAIN:=0}
