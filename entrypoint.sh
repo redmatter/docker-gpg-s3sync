@@ -82,6 +82,7 @@ restore() {
     bail_file_exists "$plain_file_path"
 
     debug "Moving ${gpg_file%%.gpg} to ${plain_file_path}"
+    mkdir -p "${SOURCE_PATH}" || bail "Couldn't create plain file destination directory (${SOURCE_PATH})"
     mv "${gpg_file%%.gpg}" "${plain_file_path}"
 }
 
