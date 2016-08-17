@@ -18,12 +18,12 @@ s3sync() {
 
     up() {
         init
-        exec s3cmd --config=/app/s3cfg.ini sync $ENCRYPTED_PATH/ s3://${AWS_S3_BUCKET}${AWS_S3_BUCKET_PATH}/
+        s3cmd --config=/app/s3cfg.ini sync $ENCRYPTED_PATH/ s3://${AWS_S3_BUCKET}${AWS_S3_BUCKET_PATH}/
     }
 
     down() {
         init
-        exec s3cmd --config=/app/s3cfg.ini sync s3://${AWS_S3_BUCKET}${AWS_S3_BUCKET_PATH}/ $ENCRYPTED_PATH/
+        s3cmd --config=/app/s3cfg.ini sync s3://${AWS_S3_BUCKET}${AWS_S3_BUCKET_PATH}/ $ENCRYPTED_PATH/
     }
 
     cmd="$1"; shift
