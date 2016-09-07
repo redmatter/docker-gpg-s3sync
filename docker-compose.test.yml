@@ -1,0 +1,40 @@
+version: "2"
+services:
+  make-test-data:
+    image: busybox
+    command: sh -c 'set -e; for i in $$(seq 1 10); do echo -n "$$i "; dd if=/dev/urandom of=/data/plain/data-$$(printf %02d $$i).txt bs=1M count=1 &>/dev/null; done; echo; md5sum /data/plain/data-*.txt | tee /data/plain/data.md5sums'
+    volumes:
+      - data:/data/plain
+
+  verify-md5:
+    image: busybox
+    command: sh -c 'md5sum -c /data/plain/data.md5sums'
+    volumes:
+      - data:/data/plain
+
+  debug:
+    image: busybox
+    command: sh
+    volumes:
+      - data:/data/plain
+      - encrypted-data:/data/encrypted
+
+  s3-sync:
+    build: ..
+    volumes:
+      - data:/data/plain
+      - encrypted-data:/data/encrypted
+    environment:
+      - DEBUG=${DEBUG}
+      - GPG_PASSPHRASE=topsecret
+      - AWS_ACCESS_KEY=${ACCESS_KEY}
+      - AWS_SECRET_KEY=${SECRET_KEY}
+      - AWS_S3_BUCKET=${BUCKET}
+      - AWS_S3_BUCKET_PATH=/backups/
+      - SOURCE_REMOVE_PLAIN=1
+      - SOURCE_FILE_MODIFIED_MINUTES_AGO=0
+      - SOURCE_FILE_PATTERN=*.txt
+
+volumes:
+  data:
+  encrypted-data:

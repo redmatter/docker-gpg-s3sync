@@ -23,7 +23,17 @@ s3sync() {
 
     down() {
         init
-        s3cmd --config=/app/s3cfg.ini sync s3://${AWS_S3_BUCKET}${AWS_S3_BUCKET_PATH}/ $ENCRYPTED_PATH/
+        if [ "$#" -gt 0 ]; then
+            for item in "$@"; do
+                if [ -e "$ENCRYPTED_PATH/$item" ]; then
+                    debug "$ENCRYPTED_PATH/$item already exists; not downloading from S3"
+                else
+                    s3cmd --config=/app/s3cfg.ini get s3://${AWS_S3_BUCKET}${AWS_S3_BUCKET_PATH}/$item $ENCRYPTED_PATH/$item
+                fi
+            done
+        else
+            s3cmd --config=/app/s3cfg.ini sync s3://${AWS_S3_BUCKET}${AWS_S3_BUCKET_PATH}/ $ENCRYPTED_PATH/
+        fi
     }
 
     cmd="$1"; shift
