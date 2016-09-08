@@ -20,7 +20,7 @@ services:
       - encrypted-data:/data/encrypted
 
   s3-sync:
-    build: ..
+    build: .
     volumes:
       - data:/data/plain
       - encrypted-data:/data/encrypted
