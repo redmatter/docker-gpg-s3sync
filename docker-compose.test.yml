@@ -25,7 +25,8 @@ services:
       - data:/data/plain
       - encrypted-data:/data/encrypted
     environment:
-      - DEBUG=${DEBUG}
+      - DEBUG=${BASH_DEBUG}
+      - LOG_DEBUG=${DEBUG}
       - GPG_PASSPHRASE=topsecret
       - AWS_ACCESS_KEY=${ACCESS_KEY}
       - AWS_SECRET_KEY=${SECRET_KEY}
