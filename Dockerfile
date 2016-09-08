@@ -9,7 +9,7 @@ COPY * /app/
 RUN ( \
     export DEBIAN_FRONTEND=noninteractive; \
     BUILD_DEPS=""; \
-    APP_DEPS="ca-certificates s3cmd"; \
+    APP_DEPS="ca-certificates s3cmd gawk"; \
 
     # so that each command can be seen clearly in the build output
     set -e -x; \
