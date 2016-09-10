@@ -64,8 +64,8 @@ restore() {
     local gpg_file="$ENCRYPTED_PATH/$1"
     if file_not_exists "$gpg_file"; then
         if is_aws_s3_enabled; then
-            debug "Syncing down from ${AWS_S3_BUCKET}/${AWS_S3_BUCKET_PATH} ..."
-            s3sync down
+            debug "Syncing down from ${AWS_S3_BUCKET}/${AWS_S3_BUCKET_PATH} ... $@"
+            s3sync down "$@"
 
             if file_not_exists "$gpg_file"; then
                 bail "Specified GPG file could not be found (after sync-down)"
