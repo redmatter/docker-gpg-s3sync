@@ -1,6 +1,7 @@
 #!/bin/bash
 
 check_command s3cmd
+check_command awk
 
 : ${AWS_ACCESS_KEY:?"AWS Access key not specified (AWS_ACCESS_KEY)"}
 : ${AWS_SECRET_KEY:?"AWS Secret key not specified (AWS_SECRET_KEY)"}
@@ -36,9 +37,15 @@ s3sync() {
         fi
     }
 
+    list() {
+        init
+        s3cmd --config=/app/s3cfg.ini ls s3://${AWS_S3_BUCKET}${AWS_S3_BUCKET_PATH}/ | \
+            awk -F ${AWS_S3_BUCKET_PATH}/ '{print $NF}'
+    }
+
     cmd="$1"; shift
     case "$cmd" in
-        up|down)
+        up|down|list)
             $cmd "$@"
             ;;
 

@@ -23,6 +23,18 @@ is_aws_s3_enabled() {
 }
 
 backup() {
+    in_array() {
+        local haystack=${1}[@]
+        local needle=${2}
+        for i in ${!haystack}; do
+            [[ ${i} == ${needle} ]] && return 0
+        done
+
+        return 1
+    }
+
+    local all_backups=( $(list-backups --batch-mode) )
+
     find_opts=($SOURCE_PATH)
     find_opts+=(-mindepth 1)
     find_opts+=(-maxdepth 1)
@@ -34,6 +46,12 @@ backup() {
     fi
 
     find "${find_opts[@]}" | while read file; do
+        # If file is already present either in ENCRYPTED_PATH or in S3 bucket, skip it
+        if ! in_array all_backups "${file}.gpg"; then
+            debug "$file already backed up; skipping"
+            continue;
+        fi
+
         debug "Encrypting $file"
         gpg encrypt $file
 
@@ -86,9 +104,50 @@ restore() {
     mv "${gpg_file%%.gpg}" "${plain_file_path}"
 }
 
+list-backups() {
+    local batch_mode=$([[ "$1" = "--batch-mode" ]] && echo true || echo false)
+    local files_in_s3=();
+    if is_aws_s3_enabled; then
+        files_in_s3=( $(s3sync list) )
+    fi
+    local files_local=( $(find $ENCRYPTED_PATH -type f -printf "%f\n") );
+
+    in_array() {
+        local haystack=${1}[@]
+        local needle=${2}
+        for i in ${!haystack}; do
+            [[ ${i} == ${needle} ]] && return 0
+        done
+
+        return 1
+    }
+
+    in_s3() {
+        in_array files_in_s3 "$1" && echo " [s3]"
+    }
+
+    in_local() {
+        in_array files_local "$1" && echo " [local]"
+    }
+
+    # get a list of all files, with no duplicates
+    local all_files=( $(for file in "${files_in_s3[@]}" "${files_local[@]}"; do echo "$file"; done | sort | uniq) )
+    
+    local file;
+    for file in "${all_files[@]}"; do
+        if $batch_mode; then
+            # print just the file name; no frills
+            echo "$file"
+        else
+            # print status for each file
+            echo "$file$(in_s3 "$file")$(in_local "$file")"
+        fi
+    done
+}
+
 cmd="$1"; shift
 case "$cmd" in
-    backup|restore)
+    backup|restore|list-backups)
         $cmd "$@"
         ;;
 
