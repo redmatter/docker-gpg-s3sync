@@ -18,10 +18,10 @@ gpg() {
         local gpg_path
         if [ -z "$1" ]; then
             gpg_path="${path}.gpg";
-            info "encrypt: Destination path not specified; encrypting to '$gpg_path'"
+            debug "encrypt: Destination path not specified; encrypting to '$gpg_path'"
         elif [ -d "$1" ]; then
             gpg_path="$1/$(basename "$gpg_path")"; shift
-            info "encrypt: Destination path is a directory; encrypting to '$gpg_path'"
+            debug "encrypt: Destination path is a directory; encrypting to '$gpg_path'"
         else
             gpg_path="$1"; shift
         fi
@@ -30,7 +30,7 @@ gpg() {
         bail_file_exists "$gpg_path"
 
         info "encrypt: Encrypting $path into $gpg_path"
-        $GPG_BIN --symmetric --no-tty --passphrase-file <(echo -n "${GPG_PASSPHRASE}") \
+        $GPG_BIN --quiet --cipher-algo AES256 --symmetric --no-tty --passphrase-file <(echo -n "${GPG_PASSPHRASE}") \
             --output "$gpg_path" "$path"
     }
 
@@ -42,14 +42,14 @@ gpg() {
         if [ -z "$1" ]; then
             if [[ "$gpg_path" =~ \.gpg$ ]]; then
                 path="${gpg_path%%.gpg}"
-                info "decrypt: Destination path not specified; decrypting to '$path'"
+                debug "decrypt: Destination path not specified; decrypting to '$path'"
             else
                 bail "decrypt: decrypted-output-file not specified and could not be figured out"
             fi
         elif [ -d "$1" ]; then
             if [[ "$gpg_path" =~ \.gpg$ ]]; then
                 path="$1/$(basename "${gpg_path%%.gpg}")"
-                info "decrypt: Destination path is a directory; decrypting to '$path'"
+                debug "decrypt: Destination path is a directory; decrypting to '$path'"
             else
                 bail "decrypt: decrypted-output-file specified is a directory; could not figure out the file name"
             fi
@@ -60,8 +60,8 @@ gpg() {
         bail_file_not_exists "$gpg_path"
         bail_file_exists "$path"
 
-        info "Decrypting $gpg_path into $path"
-        $GPG_BIN --decrypt --no-tty --passphrase-file <(echo -n "${GPG_PASSPHRASE}") \
+        info "decrypt: Decrypting $gpg_path into $path"
+        $GPG_BIN --quiet --decrypt --no-tty --passphrase-file <(echo -n "${GPG_PASSPHRASE}") \
             --output "$path" "$gpg_path"
     }
 

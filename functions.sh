@@ -85,4 +85,24 @@ load_settings_file() {
     fi
 }
 
+# in_array - check if an element can be found in an array
+#
+# This will work in most cases though as the "haystack" is passed in as arguments
+#
+# Usage:
+#   haystack=(1 2 3 4 5 6)
+#   needle=4
+#   if in_array $needle ${haystack[@]}; then
+#     echo 'found it!';
+#   fi
+in_array() {
+    local needle="${1}"; shift
+    while [ $# -gt 0 ]; do
+        [[ "${1}" == "${needle}" ]] && return 0
+        shift;
+    done
+
+    return 1
+}
+
 check_command logger
