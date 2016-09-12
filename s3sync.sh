@@ -10,7 +10,15 @@ check_command awk
 
 s3sync() {
     is_enabled() {
-        [ -n "${AWS_ACCESS_KEY}${AWS_SECRET_KEY}" ]
+        # if any AWS S3 tingz are set, then they all should be set
+        if [ -n "${AWS_ACCESS_KEY}${AWS_SECRET_KEY}${AWS_S3_BUCKET}" ]; then
+            if [ -z "${AWS_ACCESS_KEY}" -o -z "${AWS_SECRET_KEY}" -o -z "${AWS_S3_BUCKET}" ]; then
+                bail "s3sync: Not all AWS S3 config values are specifies"
+            fi
+            return 0;
+        fi
+        
+        return 1;
     }
 
     init() {

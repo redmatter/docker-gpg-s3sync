@@ -53,9 +53,7 @@ backup() {
         fi
     done
 
-    if ! s3sync is_enabled; then
-        info "AWS_ACCESS_KEY and AWS_SECRET_KEY not defined; NOT syncing to Amazon S3"
-    else
+    if s3sync is_enabled; then
         debug "Syncing up to ${AWS_S3_BUCKET}/${AWS_S3_BUCKET_PATH} ..."
         s3sync up
     fi
@@ -66,8 +64,13 @@ restore() {
     [[ "$1" =~ \.gpg$ ]] || bail "Given file does not have '.gpg' extension"
 
     local gpg_file="$ENCRYPTED_PATH/$1"
+
+    # make sure we can proceed before syncing and decrypting
+    local plain_file_path="${SOURCE_PATH}/$(basename "${gpg_file%%.gpg}")";
+    bail_file_exists "$plain_file_path"
+
     if file_not_exists "$gpg_file"; then
-        if ! s3sync is_enabled; then
+        if s3sync is_enabled; then
             debug "Syncing down from ${AWS_S3_BUCKET}/${AWS_S3_BUCKET_PATH} ... $@"
             s3sync down "$@"
 
@@ -81,9 +84,6 @@ restore() {
 
     debug "Decrypting $gpg_file"
     gpg decrypt "$gpg_file"
-
-    local plain_file_path="${SOURCE_PATH}/$(basename "${gpg_file%%.gpg}")";
-    bail_file_exists "$plain_file_path"
 
     debug "Moving ${gpg_file%%.gpg} to ${plain_file_path}"
     mkdir -p "${SOURCE_PATH}" || bail "Couldn't create plain file destination directory (${SOURCE_PATH})"
@@ -120,6 +120,9 @@ list-backups() {
         fi
     done
 }
+
+# Quit if the AWS S3 config values are improperly specified
+s3sync is_enabled || info "AWS S3 sync not enabled"
 
 cmd="$1"; shift
 case "$cmd" in

@@ -28,8 +28,12 @@ _log() {
 }
 
 bail() {
-    _log error "$@. Exiting...";
+    error "$@. Exiting...";
     exit 1;
+}
+
+error() {
+    _log error "$@";
 }
 
 info() {
