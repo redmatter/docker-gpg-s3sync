@@ -9,6 +9,8 @@ source /app/s3sync.sh
 
 set_debug
 
+set -e
+
 create_test_files() {
     md5sums="${SOURCE_PATH}/data.md5sums"
     file_exists "$md5sums" && rm "$md5sums"
@@ -26,18 +28,23 @@ verify_test_file() {
 
 run() {
     create_test_files
+
+    # perform backup
     /app/entrypoint.sh backup
+
+    # if s3sync is enabled, then remove local encrypted files so that they are pulled down from S3, during restore
+    # attempts below
+    if s3sync is_enabled; then
+        rm -f "${ENCRYPTED_PATH}/"*.txt.gpg
+    fi
+
+    # restore each file
     for i in $(seq 1 5); do
         local filepath="${SOURCE_PATH}/data-$(printf %02d $i).txt"
         local filename=$(basename "$filepath")
 
         if is_number "$SOURCE_REMOVE_PLAIN" && [ "$SOURCE_REMOVE_PLAIN" -eq 1 ]; then
             bail_file_exists "$filepath";
-        fi
-
-        # if s3sync is enabled, then remove local encrypted files so that they are pulled down from S3
-        if s3sync is_enabled; then
-            rm "${ENCRYPTED_PATH}/"*.txt.gpg
         fi
 
         /app/entrypoint.sh restore "${filename}.gpg"
