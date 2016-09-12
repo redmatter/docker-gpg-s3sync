@@ -3,12 +3,24 @@
 check_command s3cmd
 check_command awk
 
-: ${AWS_ACCESS_KEY:?"AWS Access key not specified (AWS_ACCESS_KEY)"}
-: ${AWS_SECRET_KEY:?"AWS Secret key not specified (AWS_SECRET_KEY)"}
-: ${AWS_S3_BUCKET:?"AWS Bucket name not specified (AWS_S3_BUCKET)"}
+: ${AWS_ACCESS_KEY:=}
+: ${AWS_SECRET_KEY:=}
+: ${AWS_S3_BUCKET:=}
 : ${AWS_S3_BUCKET_PATH:=}
 
 s3sync() {
+    is_enabled() {
+        # if any AWS S3 tingz are set, then they all should be set
+        if [ -n "${AWS_ACCESS_KEY}${AWS_SECRET_KEY}${AWS_S3_BUCKET}" ]; then
+            if [ -z "${AWS_ACCESS_KEY}" -o -z "${AWS_SECRET_KEY}" -o -z "${AWS_S3_BUCKET}" ]; then
+                bail "s3sync: Not all AWS S3 config values are specified"
+            fi
+            return 0;
+        fi
+        
+        return 1;
+    }
+
     init() {
         sed "s~{{AWS_ACCESS_KEY}}~${AWS_ACCESS_KEY}~g; s~{{AWS_SECRET_KEY}}~${AWS_SECRET_KEY}~g;" /app/s3cfg.ini.tpl > /app/s3cfg.ini
 
@@ -45,7 +57,7 @@ s3sync() {
 
     cmd="$1"; shift
     case "$cmd" in
-        up|down|list)
+        up|down|list|is_enabled)
             $cmd "$@"
             ;;
 

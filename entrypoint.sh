@@ -18,21 +18,7 @@ set_debug
 : ${SOURCE_PATH:=/data/plain}
 : ${ENCRYPTED_PATH:=/data/encrypted}
 
-is_aws_s3_enabled() {
-    [ -n "${AWS_ACCESS_KEY}${AWS_SECRET_KEY}" ]
-}
-
 backup() {
-    in_array() {
-        local haystack=${1}[@]
-        local needle=${2}
-        for i in ${!haystack}; do
-            [[ ${i} == ${needle} ]] && return 0
-        done
-
-        return 1
-    }
-
     local all_backups=( $(list-backups --batch-mode) )
 
     find_opts=($SOURCE_PATH)
@@ -47,7 +33,7 @@ backup() {
 
     find "${find_opts[@]}" | while read file; do
         # If file is already present either in ENCRYPTED_PATH or in S3 bucket, skip it
-        if ! in_array all_backups "${file}.gpg"; then
+        if in_array "${file}.gpg" "${all_backups[@]}"; then
             debug "$file already backed up; skipping"
             continue;
         fi
@@ -67,9 +53,7 @@ backup() {
         fi
     done
 
-    if ! is_aws_s3_enabled; then
-        info "AWS_ACCESS_KEY and AWS_SECRET_KEY not defined; NOT syncing to Amazon S3"
-    else
+    if s3sync is_enabled; then
         debug "Syncing up to ${AWS_S3_BUCKET}/${AWS_S3_BUCKET_PATH} ..."
         s3sync up
     fi
@@ -80,8 +64,13 @@ restore() {
     [[ "$1" =~ \.gpg$ ]] || bail "Given file does not have '.gpg' extension"
 
     local gpg_file="$ENCRYPTED_PATH/$1"
+
+    # make sure we can proceed before syncing and decrypting
+    local plain_file_path="${SOURCE_PATH}/$(basename "${gpg_file%%.gpg}")";
+    bail_file_exists "$plain_file_path"
+
     if file_not_exists "$gpg_file"; then
-        if is_aws_s3_enabled; then
+        if s3sync is_enabled; then
             debug "Syncing down from ${AWS_S3_BUCKET}/${AWS_S3_BUCKET_PATH} ... $@"
             s3sync down "$@"
 
@@ -96,9 +85,6 @@ restore() {
     debug "Decrypting $gpg_file"
     gpg decrypt "$gpg_file"
 
-    local plain_file_path="${SOURCE_PATH}/$(basename "${gpg_file%%.gpg}")";
-    bail_file_exists "$plain_file_path"
-
     debug "Moving ${gpg_file%%.gpg} to ${plain_file_path}"
     mkdir -p "${SOURCE_PATH}" || bail "Couldn't create plain file destination directory (${SOURCE_PATH})"
     mv "${gpg_file%%.gpg}" "${plain_file_path}"
@@ -107,27 +93,17 @@ restore() {
 list-backups() {
     local batch_mode=$([[ "$1" = "--batch-mode" ]] && echo true || echo false)
     local files_in_s3=();
-    if is_aws_s3_enabled; then
+    if s3sync is_enabled; then
         files_in_s3=( $(s3sync list) )
     fi
     local files_local=( $(find $ENCRYPTED_PATH -type f -printf "%f\n") );
 
-    in_array() {
-        local haystack=${1}[@]
-        local needle=${2}
-        for i in ${!haystack}; do
-            [[ ${i} == ${needle} ]] && return 0
-        done
-
-        return 1
-    }
-
     in_s3() {
-        in_array files_in_s3 "$1" && echo " [s3]"
+        in_array "$1" "${files_in_s3[@]}" && echo " [s3]"
     }
 
     in_local() {
-        in_array files_local "$1" && echo " [local]"
+        in_array "$1" "${files_local[@]}" && echo " [local]"
     }
 
     # get a list of all files, with no duplicates
@@ -144,6 +120,9 @@ list-backups() {
         fi
     done
 }
+
+# Quit if the AWS S3 config values are improperly specified
+s3sync is_enabled || info "AWS S3 sync not enabled"
 
 cmd="$1"; shift
 case "$cmd" in

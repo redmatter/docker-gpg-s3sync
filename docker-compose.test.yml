@@ -1,17 +1,5 @@
 version: "2"
 services:
-  make-test-data:
-    image: busybox
-    command: sh -c 'set -e; for i in $$(seq 1 10); do echo -n "$$i "; dd if=/dev/urandom of=/data/plain/data-$$(printf %02d $$i).txt bs=1M count=1 &>/dev/null; done; echo; md5sum /data/plain/data-*.txt | tee /data/plain/data.md5sums'
-    volumes:
-      - data:/data/plain
-
-  verify-md5:
-    image: busybox
-    command: sh -c 'md5sum -c /data/plain/data.md5sums'
-    volumes:
-      - data:/data/plain
-
   debug:
     image: busybox
     command: sh
@@ -19,11 +7,13 @@ services:
       - data:/data/plain
       - encrypted-data:/data/encrypted
 
-  s3-sync:
+  sut:
     build: .
+    entrypoint: /run-test.sh
     volumes:
       - data:/data/plain
       - encrypted-data:/data/encrypted
+      - ./run-test.sh:/run-test.sh
     environment:
       - DEBUG=${BASH_DEBUG}
       - LOG_DEBUG=${DEBUG}

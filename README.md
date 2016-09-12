@@ -116,6 +116,24 @@ Docker commands can be as below.
         -v /path/to/encrypted-files-dir:/data/encrypted \
         redmatter/gpg-s3sync restore file-name.zip.gpg
 
+## Tests
+
+Tests are setup to work with docker-hub. If you would like to run these tests, you need to install docker-compose and
+run the below command.
+
+```
+docker-compose -f docker-compose.test.yml run sut
+```
+
+If you would like to run a full test involving an AWS-S3 endpoint, you can do so by specifying the details via
+environment variables `ACCESS_KEY`, `SECRET_KEY` & `BUCKET`. More debug can be obtained by specifying `DEBUG=1`. See
+example usage below.
+
+```
+DEBUG=1 ACCESS_KEY=aws-access-key SECRET_KEY='aws-secret-key' BUCKET=aws-s3-bucket \
+      docker-compose -f docker-compose.test.yml run sut
+```
+
 ## License
 
 This code is licensed under MIT license. See [LICENSE](LICENSE) for more details.
