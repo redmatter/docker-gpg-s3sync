@@ -80,6 +80,14 @@ run_test() {
             local filepath="${SOURCE_PATH}/data-$(printf '%02d' "$i").txt"
             local filename=$(basename "$filepath")
 
+            # Using one file from the above set of tests, which has already been restored into SOURCE_PATH, check if
+            # the restore will fail if the destination file already exists. If the command succeeds, i.e the file was
+            # overwritten, then it is treated as a failure.
+            if /app/entrypoint.sh restore "${filename}.gpg"; then
+                error "File in SOURCE_PATH overwritten!"
+                return 1;
+            fi
+
             # remove the file before restore; otherwise 'restore' will bail seeing the file
             rm -f "$filepath";
 
@@ -93,14 +101,6 @@ run_test() {
             /app/entrypoint.sh restore "${filename}.gpg"
             verify_test_file "$filename"
         done
-
-        # Using one file from the above set of tests, which has already been restored into SOURCE_PATH, check if the
-        # restore will fail if the destination file already exists. If the command succeeds, i.e the file was
-        # overwritten, then it is treated as a failure.
-        if /app/entrypoint.sh restore "data-01.txt.gpg"; then
-            error "File in SOURCE_PATH overwritten!"
-            return 1;
-        fi
     fi
 
     return 0;
@@ -108,9 +108,6 @@ run_test() {
 
 cmd="$1"; shift
 case "$cmd" in
-    wait)
-        while true; do sleep 1; done;
-        ;;
     run_test|create_test_files|cleanup)
         "$cmd" "$@"
         ;;
