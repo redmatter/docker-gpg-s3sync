@@ -19,15 +19,15 @@ set_debug
 : "${ENCRYPTED_PATH:=/data/encrypted}"
 
 backup() {
-    # source-path must exist and be readable
-    [ -r "${SOURCE_PATH}" ] ||
-        bail "Cannot read from source-path (SOURCE_PATH='$SOURCE_PATH')"
+    # source-path must be a directory and be readable and searchable
+    test_all drx "${SOURCE_PATH}" ||
+        bail "Cannot read from source-path (SOURCE_PATH='$SOURCE_PATH' $(stat -c %A "${SOURCE_PATH}"))"
     # if plain file is to be removed after 'backup', source-path must be writable
     ( [ "${SOURCE_REMOVE_PLAIN}" = 0 ] || [ -w "${SOURCE_PATH}" ] ) || {
-        bail "Cannot write to source-path (Cannot remove plain file; SOURCE_REMOVE_PLAIN='$SOURCE_REMOVE_PLAIN', SOURCE_PATH='${SOURCE_PATH}')"
+        bail "Cannot write to source-path (Cannot remove plain file; SOURCE_REMOVE_PLAIN='$SOURCE_REMOVE_PLAIN', SOURCE_PATH='${SOURCE_PATH}' $(stat -c %A "${SOURCE_PATH}"))"
     }
-    # destination/encrypted-path must be writable
-    [ -w "${ENCRYPTED_PATH}" ] ||
+    # destination/encrypted-path must be a directory and be writable and searchable
+    test_all drwx "${ENCRYPTED_PATH}" ||
         bail "Cannot write to encrypted-path (ENCRYPTED_PATH=${ENCRYPTED_PATH})"
 
     local all_backups=( $(list-backups --batch-mode) )
@@ -68,12 +68,12 @@ restore() {
     [ -n "$1" ] || bail "No GPG file specified"
     [[ "$1" =~ \.gpg$ ]] || bail "Given file does not have '.gpg' extension"
 
-    # destination/encrypted-path must be readable
-    [ -r "${ENCRYPTED_PATH}" ] ||
-        bail "Cannot read from encrypted-path (ENCRYPTED_PATH=${ENCRYPTED_PATH})"
-    # source-path to which the file is restored, must be writable
-    [ -w "${SOURCE_PATH}" ] ||
-        bail "Cannot write to source-path (SOURCE_PATH='$SOURCE_PATH')"
+    # destination/encrypted-path must be a directory and be readable and searchable
+    test_all drx "${ENCRYPTED_PATH}" ||
+        bail "Cannot read from encrypted-path (ENCRYPTED_PATH='${ENCRYPTED_PATH}' $(stat -c %A "${ENCRYPTED_PATH}"))"
+    # source-path to which the file is restored, must be a directory and be writable and searchable
+    test_all drwx "${SOURCE_PATH}" ||
+        bail "Cannot write to source-path (SOURCE_PATH='$SOURCE_PATH' $(stat -c %A "${SOURCE_PATH}"))"
 
     local gpg_file="$ENCRYPTED_PATH/$1"
 
@@ -85,7 +85,7 @@ restore() {
         if s3sync is_enabled; then
             # Inorder for sync-down to work, the encrypted path must be writable
             [ -w "${ENCRYPTED_PATH}" ] ||
-                bail "Cannot write to encrypted-path (ENCRYPTED_PATH=${ENCRYPTED_PATH})"
+                bail "Cannot write to encrypted-path (ENCRYPTED_PATH='${ENCRYPTED_PATH}' $(stat -c %A "${ENCRYPTED_PATH}"))"
 
             debug "Syncing down from ${AWS_S3_BUCKET}/${AWS_S3_BUCKET_PATH} ... $*"
             s3sync down "$@"
@@ -103,12 +103,12 @@ restore() {
 }
 
 list-backups() {
-    # source-path must exist
-    [ -e "${SOURCE_PATH}" ] ||
-        bail "Source path could not be found (SOURCE_PATH='$SOURCE_PATH')"
-    # destination/encrypted-path must exist
-    [ -e "${ENCRYPTED_PATH}" ] ||
-        bail "Encrypted path could not be found (ENCRYPTED_PATH='${ENCRYPTED_PATH}')"
+    # source-path must be a directory and be readable and searchable
+    test_all drx "${SOURCE_PATH}" ||
+        bail "Source path could not be found (SOURCE_PATH='$SOURCE_PATH' $(stat -c %A "${SOURCE_PATH}"))"
+    # destination/encrypted-path must be a directory and be readable and searchable
+    test_all drx "${ENCRYPTED_PATH}" ||
+        bail "Encrypted path could not be found (ENCRYPTED_PATH='${ENCRYPTED_PATH}' $(stat -c %A "${ENCRYPTED_PATH}"))"
 
     local batch_mode=$([[ "$1" = "--batch-mode" ]] && echo true || echo false)
     local files_in_s3=();
@@ -143,8 +143,8 @@ list-backups() {
 # Quit if the AWS S3 config values are improperly specified
 s3sync is_enabled || info "AWS S3 sync not enabled"
 
-debug "SOURCE_PATH: $(ls -ld "${SOURCE_PATH}")"
-debug "ENCRYPTED_PATH: $(ls -ld "${ENCRYPTED_PATH}")"
+info "SOURCE_PATH: '$SOURCE_PATH' $(stat -c %A "${SOURCE_PATH}")"
+info "ENCRYPTED_PATH: '$ENCRYPTED_PATH' $(stat -c %A "${ENCRYPTED_PATH}")"
 
 cmd="$1"; shift
 case "$cmd" in
