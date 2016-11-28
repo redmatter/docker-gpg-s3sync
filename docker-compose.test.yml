@@ -1,30 +1,49 @@
 version: "2"
 services:
-  debug:
-    image: busybox
-    command: sh
+  test-data-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile.test-data-generator
+    entrypoint: /run-test.sh
+    command:
+      - create_test_files
+      # up / run docker-compose with "wait_after_create_test_files=yes" to make test-data-generator wait; this is to
+      # emulate a long running data-generation container, from which gpg-s3sync will perform backup
+      - ${wait_after_create_test_files}
     volumes:
       - data:/data/plain
-      - encrypted-data:/data/encrypted
+      - ./run-test.sh:/run-test.sh
+    environment:
+      - SOURCE_PATH=/data/plain
+      - DEBUG=${BASH_DEBUG}
+      - LOG_DEBUG=${DEBUG}
 
   sut:
     build: .
     entrypoint: /run-test.sh
+    command: run_test
+    depends_on:
+      - test-data-generator
     volumes:
+      # Mount the data to be backed-up into a path that does not exist in the gpg-s3sync image. Otherwise docker volume
+      # side-effects will come into play, replacing permissions etc. affecting the data-generator
       - data:/data/plain
       - encrypted-data:/data/encrypted
       - ./run-test.sh:/run-test.sh
     environment:
-      - DEBUG=${BASH_DEBUG}
-      - LOG_DEBUG=${DEBUG}
+      - SOURCE_PATH=/data/plain
+      - ENCRYPTED_PATH=/data/encrypted
       - GPG_PASSPHRASE=topsecret
+      # Specify these S3 values in the environment (on CLI) in order to test that call-flow
       - AWS_ACCESS_KEY=${ACCESS_KEY}
       - AWS_SECRET_KEY=${SECRET_KEY}
       - AWS_S3_BUCKET=${BUCKET}
       - AWS_S3_BUCKET_PATH=/backups/
-      - SOURCE_REMOVE_PLAIN=1
+      - SOURCE_REMOVE_PLAIN=0
       - SOURCE_FILE_MODIFIED_MINUTES_AGO=0
       - SOURCE_FILE_PATTERN=*.txt
+      - DEBUG=${BASH_DEBUG}
+      - LOG_DEBUG=${DEBUG}
 
 volumes:
   data:

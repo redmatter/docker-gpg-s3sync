@@ -89,6 +89,26 @@ load_settings_file() {
     fi
 }
 
+# Test all specified bash tests
+#
+# E.g: test_all dxw /tmp
+#      Is the same as writing [ -d /tmp -a -x /tmp -a -w /tmp ]
+test_all() {
+    [ -n "$1" -a -n "$2" ] || bail "Invalid invocation of 'test_all'";
+
+    # explode each test
+    local tests=( $(echo "$1" | fold -w1) )
+
+    # stitch together the command array
+    local cmd=( "-${tests[@]:0:1}" "$2" )
+    for ((i=1; i <= ${#tests}; i++)); do
+        cmd+=( -a "-${tests[$i]}" "$2" )
+    done
+
+    # evaluate the command
+    [ "${cmd[@]}" ]
+}
+
 # in_array - check if an element can be found in an array
 #
 # This will work in most cases though as the "haystack" is passed in as arguments

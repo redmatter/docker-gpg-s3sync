@@ -1,0 +1,29 @@
+FROM debian:jessie
+
+# DATA_PATH is the path where data is generated into. This would be a shared location (via volume) from where
+# gpg-s3sync would read data from.
+ENV DATA_PATH=/data/plain
+
+COPY * /app/
+
+RUN ( \
+    # Here we are trying to emulate a real world scenario where a container that generates some data needing backup.
+    # In that case, the container can dictate what user it is run as; in this case we are using 'daemon' user.
+    #
+    # In this case, the data generator app has decided to have the path under /data/plain and have no read/write perms
+    # for anyone other than the daemon user.
+    #
+    # In the test setup (ref: docker-compose.test.yml), the 'sut' service which is mocking the gpg-s3sync functionality
+    # is run as root. This can be changed if you extend the base image or by adding USER directive to the Dockerfile
+    mkdir -p "$DATA_PATH" && \
+        chown daemon:daemon "$DATA_PATH" && \
+        chmod go-rwx "$DATA_PATH"; \
+
+    # In order to satisfy check_command checks; these commands are not used by the data-generator
+    ln -s /bin/true /bin/s3cmd; \
+    ln -s /bin/true /bin/awk; \
+)
+
+# As mentioned above, this image is setup to be run as daemon:daemon. This is not altered in docker-compose.test.yml
+# using the "user:" directive.
+USER daemon:daemon

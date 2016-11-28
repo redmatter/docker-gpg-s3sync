@@ -1,8 +1,6 @@
 FROM debian:jessie
 
-ENV SOURCE_PATH=/data/plain \
-    ENCRYPTED_PATH=/data/encrypted \
-    GNUPGHOME=/app/.gnupg
+ENV GNUPGHOME=/app/.gnupg
 
 COPY * /app/
 
@@ -18,12 +16,12 @@ RUN ( \
     apt-get update; \
     apt-get install --no-install-recommends -y $BUILD_DEPS $APP_DEPS ; \
 
-    for path in $SOURCE_PATH $ENCRYPTED_PATH $GNUPGHOME; do \
-        mkdir -p $path && chmod go-rwx $path; \
-    done; \
+    # If this container is run as any user other than root, GNUPGHOME would need different ownership. At run time this
+    # can to an extend be resolved by using a 'tmpfs' mount, which can take 'uid' option.
+    mkdir -p "$GNUPGHOME" && chmod go-rwx "$GNUPGHOME"; \
 
     # remove packages that we don't need
-    apt-get remove -y $BUILD_DEPS ; \
+    [ -z "$BUILD_DEPS" ] || apt-get remove -y $BUILD_DEPS; \
     apt-get autoremove -y ; \
     apt-get clean; \
     rm -rf /var/lib/apt/* /var/lib/dpkg/* /var/lib/cache/* /var/lib/log/*; \

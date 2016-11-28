@@ -2,3 +2,6 @@ LICENSE
 README.md
 docker-compose.test.yml
 run-test.sh
+Dockerfile*
+.git
+.dockerignore
