@@ -16,8 +16,8 @@ RUN ( \
     # In the test setup (ref: docker-compose.test.yml), the 'sut' service which is mocking the gpg-s3sync functionality
     # is run as root. This can be changed if you extend the base image or by adding USER directive to the Dockerfile
     mkdir -p "$DATA_PATH" && \
-    chown daemon:daemon "$DATA_PATH"; \
-    chmod go-rwx "$DATA_PATH" && \
+        chown daemon:daemon "$DATA_PATH" && \
+        chmod go-rwx "$DATA_PATH"; \
 
     # In order to satisfy check_command checks; these commands are not used by the data-generator
     ln -s /bin/true /bin/s3cmd; \
