@@ -20,7 +20,7 @@ gpg() {
             gpg_path="${path}.gpg";
             debug "encrypt: Destination path not specified; encrypting to '$gpg_path'"
         elif [ -d "$1" ]; then
-            gpg_path="$1/$(basename "$gpg_path")"; shift
+            gpg_path="$1/$(basename "$path").gpg"; shift
             debug "encrypt: Destination path is a directory; encrypting to '$gpg_path'"
         else
             gpg_path="$1"; shift

@@ -12,44 +12,49 @@ source /app/s3sync.sh
 load_settings_file
 set_debug
 
-: ${SOURCE_REMOVE_PLAIN:=0}
-: ${SOURCE_FILE_PATTERN:=}
-: ${SOURCE_FILE_MODIFIED_MINUTES_AGO:=30}
-: ${SOURCE_PATH:=/data/plain}
-: ${ENCRYPTED_PATH:=/data/encrypted}
+: "${SOURCE_REMOVE_PLAIN:=0}"
+: "${SOURCE_FILE_PATTERN:=}"
+: "${SOURCE_FILE_MODIFIED_MINUTES_AGO:=30}"
+: "${SOURCE_PATH:=/data/plain}"
+: "${ENCRYPTED_PATH:=/data/encrypted}"
 
 backup() {
+    # source-path must exist and be readable
+    [ -r "${SOURCE_PATH}" ] ||
+        bail "Cannot read from source-path (SOURCE_PATH='$SOURCE_PATH')"
+    # if plain file is to be removed after 'backup', source-path must be writable
+    ( [ "${SOURCE_REMOVE_PLAIN}" = 0 ] || [ -w "${SOURCE_PATH}" ] ) || {
+        bail "Cannot write to source-path (Cannot remove plain file; SOURCE_REMOVE_PLAIN='$SOURCE_REMOVE_PLAIN', SOURCE_PATH='${SOURCE_PATH}')"
+    }
+    # destination/encrypted-path must be writable
+    [ -w "${ENCRYPTED_PATH}" ] ||
+        bail "Cannot write to encrypted-path (ENCRYPTED_PATH=${ENCRYPTED_PATH})"
+
     local all_backups=( $(list-backups --batch-mode) )
 
-    find_opts=($SOURCE_PATH)
+    find_opts=("$SOURCE_PATH")
     find_opts+=(-mindepth 1)
     find_opts+=(-maxdepth 1)
     find_opts+=(-type f)
     [ -z "$SOURCE_FILE_PATTERN" ] || \
         find_opts+=(-name "$SOURCE_FILE_PATTERN")
-    if is_number "$SOURCE_FILE_MODIFIED_MINUTES_AGO" && [ $SOURCE_FILE_MODIFIED_MINUTES_AGO -gt 0 ]; then
-        find_opts+=(-mmin +$SOURCE_FILE_MODIFIED_MINUTES_AGO)
+    if is_number "$SOURCE_FILE_MODIFIED_MINUTES_AGO" && [ "$SOURCE_FILE_MODIFIED_MINUTES_AGO" -gt 0 ]; then
+        find_opts+=(-mmin +"$SOURCE_FILE_MODIFIED_MINUTES_AGO")
     fi
 
     find "${find_opts[@]}" | while read file; do
         # If file is already present either in ENCRYPTED_PATH or in S3 bucket, skip it
         if in_array "${file}.gpg" "${all_backups[@]}"; then
-            debug "$file already backed up; skipping"
+            debug "'$file' already backed up; skipping"
             continue;
         fi
 
-        debug "Encrypting $file"
-        gpg encrypt $file
-
-        local local_path="${ENCRYPTED_PATH}/$(basename "${file}.gpg")";
-        if [ "$(readlink -f "${file}.gpg")" != "$(readlink -f "${local_path}")" ]; then
-            debug "Moving ${file}.gpg to $ENCRYPTED_PATH"
-            mv ${file}.gpg $ENCRYPTED_PATH/.
-        fi
+        debug "Encrypting '${file}'"
+        gpg encrypt "$file" "${ENCRYPTED_PATH}"
 
         if [ "0$SOURCE_REMOVE_PLAIN" -eq 1 ] &>/dev/null; then
-            debug "Removing ${file}"
-            rm $file
+            debug "Removing '${file}'"
+            rm "$file"
         fi
     done
 
@@ -63,6 +68,13 @@ restore() {
     [ -n "$1" ] || bail "No GPG file specified"
     [[ "$1" =~ \.gpg$ ]] || bail "Given file does not have '.gpg' extension"
 
+    # destination/encrypted-path must be readable
+    [ -r "${ENCRYPTED_PATH}" ] ||
+        bail "Cannot read from encrypted-path (ENCRYPTED_PATH=${ENCRYPTED_PATH})"
+    # source-path to which the file is restored, must be writable
+    [ -w "${SOURCE_PATH}" ] ||
+        bail "Cannot write to source-path (SOURCE_PATH='$SOURCE_PATH')"
+
     local gpg_file="$ENCRYPTED_PATH/$1"
 
     # make sure we can proceed before syncing and decrypting
@@ -71,7 +83,11 @@ restore() {
 
     if file_not_exists "$gpg_file"; then
         if s3sync is_enabled; then
-            debug "Syncing down from ${AWS_S3_BUCKET}/${AWS_S3_BUCKET_PATH} ... $@"
+            # Inorder for sync-down to work, the encrypted path must be writable
+            [ -w "${ENCRYPTED_PATH}" ] ||
+                bail "Cannot write to encrypted-path (ENCRYPTED_PATH=${ENCRYPTED_PATH})"
+
+            debug "Syncing down from ${AWS_S3_BUCKET}/${AWS_S3_BUCKET_PATH} ... $*"
             s3sync down "$@"
 
             if file_not_exists "$gpg_file"; then
@@ -82,21 +98,24 @@ restore() {
         fi
     fi
 
-    debug "Decrypting $gpg_file"
-    gpg decrypt "$gpg_file"
-
-    debug "Moving ${gpg_file%%.gpg} to ${plain_file_path}"
-    mkdir -p "${SOURCE_PATH}" || bail "Couldn't create plain file destination directory (${SOURCE_PATH})"
-    mv "${gpg_file%%.gpg}" "${plain_file_path}"
+    debug "Decrypting '$gpg_file'"
+    gpg decrypt "$gpg_file" "${plain_file_path}"
 }
 
 list-backups() {
+    # source-path must exist
+    [ -e "${SOURCE_PATH}" ] ||
+        bail "Source path could not be found (SOURCE_PATH='$SOURCE_PATH')"
+    # destination/encrypted-path must exist
+    [ -e "${ENCRYPTED_PATH}" ] ||
+        bail "Encrypted path could not be found (ENCRYPTED_PATH='${ENCRYPTED_PATH}')"
+
     local batch_mode=$([[ "$1" = "--batch-mode" ]] && echo true || echo false)
     local files_in_s3=();
     if s3sync is_enabled; then
         files_in_s3=( $(s3sync list) )
     fi
-    local files_local=( $(find $ENCRYPTED_PATH -type f -printf "%f\n") );
+    local files_local=( $(find "$ENCRYPTED_PATH" -type f -printf "%f\n") );
 
     in_s3() {
         in_array "$1" "${files_in_s3[@]}" && echo " [s3]"
@@ -108,7 +127,7 @@ list-backups() {
 
     # get a list of all files, with no duplicates
     local all_files=( $(for file in "${files_in_s3[@]}" "${files_local[@]}"; do echo "$file"; done | sort | uniq) )
-    
+
     local file;
     for file in "${all_files[@]}"; do
         if $batch_mode; then
@@ -123,6 +142,9 @@ list-backups() {
 
 # Quit if the AWS S3 config values are improperly specified
 s3sync is_enabled || info "AWS S3 sync not enabled"
+
+debug "SOURCE_PATH: $(ls -ld "${SOURCE_PATH}")"
+debug "ENCRYPTED_PATH: $(ls -ld "${ENCRYPTED_PATH}")"
 
 cmd="$1"; shift
 case "$cmd" in
